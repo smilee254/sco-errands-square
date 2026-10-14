@@ -1,8 +1,40 @@
-"use client";
-import { useParams } from "next/navigation";
+import type { Metadata } from "next";
+import { MOCK_LISTINGS } from "@/lib/mock-data";
 import ListingDetail from "@/components/ListingDetail";
 
-export default function SchoolDetailPage() {
-  const params = useParams();
-  return <ListingDetail id={params.id as string} />;
+interface Props {
+  params: Promise<{ id: string }>;
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const listing = MOCK_LISTINGS.find((l) => l.id === id);
+
+  if (!listing) {
+    return {
+      title: "Listing Not Found",
+      description: "The requested school listing could not be found.",
+    };
+  }
+
+  const feeText = listing.price ? ` - KES ${listing.price.toLocaleString()}/term` : "";
+  const title = `${listing.title} in ${listing.location}${feeText}`;
+
+  return {
+    title,
+    description: listing.description,
+    openGraph: {
+      title,
+      description: listing.description,
+      images: listing.images?.[0] ? [{ url: listing.images[0] }] : undefined,
+    },
+    alternates: {
+      canonical: `/schools-nearby/${id}`,
+    },
+  };
+}
+
+export default async function SchoolDetailPage({ params }: Props) {
+  const { id } = await params;
+  return <ListingDetail id={id} />;
 }

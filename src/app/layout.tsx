@@ -14,15 +14,69 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+import JsonLd from "@/components/JsonLd";
+
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sco-errands-square.vercel.app";
+
 export const metadata: Metadata = {
-  title: "Sco-errands square",
-  description: "Your trusted platform for professional services in Kenya. Home of Nyumba Yangu — Sco House Hunters.",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "Sco-errands square | Nyumba Yangu House Hunters & Services in Kenya",
+    template: "%s | Sco-errands square",
+  },
+  description:
+    "Your trusted partner for house hunting (Nyumba Yangu), professional movers, schools nearby, private school transport, and verified property listings across Kenya.",
+  keywords: [
+    "house hunting Kenya",
+    "Nyumba Yangu",
+    "rentals in Ruiru",
+    "houses for rent Nairobi",
+    "Kiambu house hunters",
+    "movers in Nairobi",
+    "schools nearby finder",
+    "private school transport Kenya",
+    "property Kenya",
+    "plots for sale Kiambu",
+  ],
+  authors: [{ name: "Sco-errands square" }],
+  creator: "Sco-errands square",
+  publisher: "Sco-errands square",
+  openGraph: {
+    type: "website",
+    locale: "en_KE",
+    url: siteUrl,
+    siteName: "Sco-errands square",
+    title: "Sco-errands square | Nyumba Yangu House Hunters & Services in Kenya",
+    description:
+      "We do the legwork so you can make the best choice. Verified rental houses, movers, schools, transport, and property in Kenya.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Sco-errands square | House Hunting & Services in Kenya",
+    description:
+      "Verified rental houses, reliable movers, schools nearby, and property in Kenya.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  alternates: {
+    canonical: "/",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-slate-50 text-slate-900">
+        <JsonLd />
         <AuthProvider>
           <Navigation />
           <main className="flex-grow">
