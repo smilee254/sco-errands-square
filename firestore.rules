@@ -1,0 +1,89 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helper: Admin Check ───────────────────────────────────────────────────
+    // Checks Firebase custom token claim OR the /users/{uid} role field in Firestore.
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.token.role == 'admin' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // ─── /users/{userId} ──────────────────────────────────────────────────────
+    match /users/{userId} {
+      // Users can read their own profile; admins can read any
+      allow read: if isOwner(userId) || isAdmin();
+
+      // On creation: user can only create their own document
+      // Role must be 'client' — regular users cannot self-assign 'admin'
+      allow create: if isOwner(userId)
+        && request.resource.data.uid == userId
+        && request.resource.data.role == 'client'
+        && request.resource.data.email is string
+        && request.resource.data.createdAt is string;
+
+      // User can update their own profile fields EXCEPT role
+      // Admins can update any user, including assigning roles
+      allow update: if isAdmin()
+        || (isOwner(userId) && !('role' in request.resource.data.diff(resource.data).affectedKeys()));
+
+      // Only admins can delete user documents
+      allow delete: if isAdmin();
+    }
+
+    // ─── /listings/{listingId} ────────────────────────────────────────────────
+    match /listings/{listingId} {
+      // Public read — search engines and visitors can read all listings
+      allow read: if true;
+
+      // Only admins can create, update, or delete listings
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ─── /inquiries/{inquiryId} ──────────────────────────────────────────────
+    match /inquiries/{inquiryId} {
+      // Anyone (guest or signed-in) can submit an inquiry
+      // Enforce required fields and sane length constraints
+      allow create: if
+        request.resource.data.clientName is string &&
+        request.resource.data.clientName.size() > 0 &&
+        request.resource.data.clientName.size() <= 100 &&
+        request.resource.data.clientPhone is string &&
+        request.resource.data.clientPhone.size() > 0 &&
+        request.resource.data.clientPhone.size() <= 30 &&
+        request.resource.data.listingId is string &&
+        request.resource.data.listingId.size() > 0 &&
+        request.resource.data.createdAt is string &&
+        request.resource.data.status == 'new' &&
+        // If userId is supplied, it must match the caller's uid
+        (!('userId' in request.resource.data) ||
+          request.resource.data.userId == null ||
+          (isSignedIn() && request.resource.data.userId == request.auth.uid));
+
+      // Admins can read all inquiries; authenticated clients can read their own
+      allow read: if isAdmin()
+        || (isSignedIn() && resource.data.userId == request.auth.uid);
+
+      // Only admins can update inquiries (e.g., change status to 'contacted')
+      allow update: if isAdmin();
+
+      // Only admins can delete inquiries
+      allow delete: if isAdmin();
+    }
+
+    // ─── Deny Everything Else ─────────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

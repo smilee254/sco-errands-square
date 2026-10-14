@@ -56,6 +56,35 @@ export const HOUSE_CATEGORIES = {
   }
 };
 
+export type UserRole = "admin" | "client";
+
+export interface UserProfile {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL?: string | null;
+  phoneNumber?: string | null;
+  role: UserRole;
+  createdAt: string;
+  savedListingIds?: string[];
+}
+
+export interface Inquiry {
+  id: string;
+  listingId: string;
+  listingTitle: string;
+  listingCategory: ListingCategory;
+  listingLocation: string;
+  clientName: string;
+  clientPhone: string;
+  message?: string;
+  userId?: string;
+  createdAt: string;
+  status: "new" | "contacted" | "completed";
+}
+
+export const DEFAULT_BUSINESS_PHONE = process.env.NEXT_PUBLIC_BUSINESS_PHONE || "+254700000000";
+
 export interface CartItem {
   listingId: string;
   category: ListingCategory;

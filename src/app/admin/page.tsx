@@ -1,8 +1,10 @@
 "use client";
 
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { useState } from "react";
-import { HOUSE_CATEGORIES } from "@/lib/types";
+import { useState, useEffect } from "react";
+import { collection, query, orderBy, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { HOUSE_CATEGORIES, Inquiry } from "@/lib/types";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<"upload" | "notifications">("upload");
@@ -204,12 +206,132 @@ function UploadForm() {
 }
 
 function NotificationsView() {
+  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [loading, setLoading] = useState(() => Boolean(db));
+
+  useEffect(() => {
+    if (!db) {
+      return;
+    }
+
+    const q = query(collection(db, "inquiries"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const items: Inquiry[] = [];
+        snapshot.forEach((docSnap) => {
+          items.push({ id: docSnap.id, ...(docSnap.data() as Omit<Inquiry, "id">) });
+        });
+        setInquiries(items);
+        setLoading(false);
+      },
+      (err) => {
+        console.warn("Could not load inquiries:", err);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleUpdateStatus = async (id: string, newStatus: "new" | "contacted" | "completed") => {
+    if (!db) return;
+    try {
+      await updateDoc(doc(db, "inquiries", id), { status: newStatus });
+    } catch (err) {
+      console.error("Failed to update status:", err);
+    }
+  };
+
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-      <h2 className="text-xl font-bold text-slate-900 mb-6">Interested Clients</h2>
-      <div className="text-slate-500 text-center py-12 border-2 border-dashed border-slate-200 rounded-lg">
-        No new notifications at the moment.
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">Client Inquiries & Bookings</h2>
+          <p className="text-sm text-slate-500">Real-time incoming leads from website visitors</p>
+        </div>
+        <span className="text-xs bg-blue-100 text-blue-700 font-semibold px-2.5 py-1 rounded-full">
+          {inquiries.length} {inquiries.length === 1 ? "Inquiry" : "Inquiries"}
+        </span>
       </div>
+
+      {loading ? (
+        <div className="text-center py-12 text-slate-400 text-sm">Loading inquiries...</div>
+      ) : inquiries.length === 0 ? (
+        <div className="text-slate-500 text-center py-12 border-2 border-dashed border-slate-200 rounded-lg">
+          No inquiries received yet. When visitors click &quot;Book Viewing&quot; or &quot;I&apos;m Interested&quot;, they will appear here.
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {inquiries.map((inq) => {
+            const cleanPhone = inq.clientPhone.replace(/[^0-9]/g, "");
+            const whatsappUrl = `https://wa.me/${cleanPhone.startsWith("0") ? "254" + cleanPhone.slice(1) : cleanPhone}?text=${encodeURIComponent(
+              `Hello ${inq.clientName}, regarding your inquiry about "${inq.listingTitle}" on Sco-errands...`
+            )}`;
+
+            return (
+              <div
+                key={inq.id}
+                className="p-4 border rounded-xl hover:border-slate-300 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center space-x-2">
+                    <span className="font-bold text-slate-900">{inq.clientName}</span>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                        inq.status === "completed"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : inq.status === "contacted"
+                          ? "bg-amber-100 text-amber-800"
+                          : "bg-blue-100 text-blue-800"
+                      }`}
+                    >
+                      {inq.status}
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-700">
+                    Interested in: <span className="font-semibold">{inq.listingTitle}</span> ({inq.listingLocation})
+                  </p>
+                  {inq.message && (
+                    <p className="text-xs text-slate-500 italic bg-slate-50 p-2 rounded-md">
+                      &quot;{inq.message}&quot;
+                    </p>
+                  )}
+                  <p className="text-[11px] text-slate-400">
+                    Received: {new Date(inq.createdAt).toLocaleString()}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <a
+                    href={`tel:${inq.clientPhone}`}
+                    className="inline-flex items-center px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold"
+                  >
+                    Call ({inq.clientPhone})
+                  </a>
+                  <a
+                    href={whatsappUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-semibold"
+                  >
+                    WhatsApp
+                  </a>
+                  <select
+                    value={inq.status}
+                    onChange={(e) => handleUpdateStatus(inq.id, e.target.value as "new" | "contacted" | "completed")}
+                    className="px-2 py-1.5 border border-slate-300 rounded-lg text-xs bg-white text-slate-700 font-medium"
+                  >
+                    <option value="new">Mark New</option>
+                    <option value="contacted">Mark Contacted</option>
+                    <option value="completed">Mark Completed</option>
+                  </select>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
