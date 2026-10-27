@@ -141,18 +141,22 @@ export default function Navigation() {
                   )}
                 </div>
               ) : (
-                <button
-                  onClick={() => setAuthModalOpen(true)}
-                  className="inline-flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-xs"
+                <Link
+                  href="/login"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setAuthModalOpen(true);
+                  }}
+                  className="inline-flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-xs cursor-pointer"
                 >
                   <User className="w-3.5 h-3.5" />
                   <span>Sign In</span>
-                </button>
+                </Link>
               )}
 
               {/* Mobile hamburger */}
               <button
-                className="md:hidden p-2 text-slate-300 hover:text-white transition-colors"
+                className="md:hidden p-2 text-slate-300 hover:text-white transition-colors cursor-pointer"
                 onClick={() => setMobileOpen(!mobileOpen)}
               >
                 {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -184,7 +188,7 @@ export default function Navigation() {
               )
             )}
 
-            {user && (
+            {user ? (
               <div className="pt-3 border-t border-slate-700">
                 {isAdmin && (
                   <Link
@@ -196,14 +200,30 @@ export default function Navigation() {
                   </Link>
                 )}
                 <button
+                  type="button"
                   onClick={() => {
                     setMobileOpen(false);
                     logout();
                   }}
-                  className="block text-sm text-red-400 font-medium py-1.5"
+                  className="block text-sm text-red-400 font-medium py-1.5 cursor-pointer"
                 >
                   Sign Out ({profile?.displayName || user.email})
                 </button>
+              </div>
+            ) : (
+              <div className="pt-3 border-t border-slate-700">
+                <Link
+                  href="/login"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setMobileOpen(false);
+                    setAuthModalOpen(true);
+                  }}
+                  className="w-full flex items-center justify-center space-x-2 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm cursor-pointer"
+                >
+                  <User className="w-4 h-4" />
+                  <span>Sign In</span>
+                </Link>
               </div>
             )}
           </div>
