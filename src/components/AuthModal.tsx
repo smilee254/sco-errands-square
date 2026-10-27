@@ -22,6 +22,44 @@ export default function AuthModal({ isOpen, onClose, defaultMode = "signin" }: A
 
   if (!isOpen) return null;
 
+  const isConfigured = Boolean(auth);
+
+  const formatAuthError = (err: unknown): string => {
+    if (!err) return "An unexpected error occurred.";
+    const errObj = err as { code?: string; message?: string };
+    const code = errObj.code || "";
+    const msg = errObj.message || (err instanceof Error ? err.message : "");
+
+    if (code === "auth/unauthorized-domain" || msg.includes("auth/unauthorized-domain")) {
+      return "This domain is not authorized in Firebase. In Firebase Console, go to Authentication > Settings > Authorized domains and add this domain.";
+    }
+    if (code === "auth/operation-not-allowed" || msg.includes("auth/operation-not-allowed")) {
+      return "Sign-in method is not enabled. In Firebase Console, go to Authentication > Sign-in method and enable Google and/or Email/Password.";
+    }
+    if (code === "auth/popup-blocked" || msg.includes("auth/popup-blocked")) {
+      return "The sign-in popup was blocked by your browser. Please allow popups for this site.";
+    }
+    if (code === "auth/popup-closed-by-user" || msg.includes("auth/popup-closed-by-user")) {
+      return "The sign-in popup was closed before completing.";
+    }
+    if (code === "auth/network-request-failed" || msg.includes("auth/network-request-failed")) {
+      return "Network error. Please check your internet connection.";
+    }
+    if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found" || msg.includes("auth/invalid-credential")) {
+      return "Invalid email or password.";
+    }
+    if (code === "auth/email-already-in-use" || msg.includes("auth/email-already-in-use")) {
+      return "An account already exists with this email address.";
+    }
+    if (code === "auth/weak-password" || msg.includes("auth/weak-password")) {
+      return "Password should be at least 6 characters.";
+    }
+    if (msg.includes("Firebase is not initialized")) {
+      return "Firebase is not configured. Please add your Firebase API keys to your environment variables.";
+    }
+    return msg || "Authentication failed. Please try again.";
+  };
+
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
@@ -29,8 +67,7 @@ export default function AuthModal({ isOpen, onClose, defaultMode = "signin" }: A
       await signInWithGoogle();
       onClose();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to sign in with Google";
-      setError(message);
+      setError(formatAuthError(err));
     } finally {
       setLoading(false);
     }
@@ -52,16 +89,7 @@ export default function AuthModal({ isOpen, onClose, defaultMode = "signin" }: A
       }
       onClose();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Authentication failed";
-      if (message.includes("auth/invalid-credential") || message.includes("auth/wrong-password")) {
-        setError("Invalid email or password.");
-      } else if (message.includes("auth/email-already-in-use")) {
-        setError("An account already exists with this email.");
-      } else if (message.includes("auth/weak-password")) {
-        setError("Password should be at least 6 characters.");
-      } else {
-        setError(message);
-      }
+      setError(formatAuthError(err));
     } finally {
       setLoading(false);
     }
@@ -91,6 +119,18 @@ export default function AuthModal({ isOpen, onClose, defaultMode = "signin" }: A
             Access your shortlist, save preferences, and track your errands.
           </p>
         </div>
+
+        {!isConfigured && (
+          <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-start space-x-2">
+            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
+            <div>
+              <p className="font-semibold">Firebase keys are missing in this environment.</p>
+              <p className="mt-0.5 text-amber-700">
+                To sign in, please add your Firebase credentials to <code className="bg-amber-100 px-1 py-0.5 rounded">.env.local</code> (for localhost) or to Vercel Environment Variables (for live deployment).
+              </p>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm flex items-start space-x-2">
