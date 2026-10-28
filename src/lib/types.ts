@@ -83,7 +83,7 @@ export interface Inquiry {
   status: "new" | "contacted" | "completed";
 }
 
-export const DEFAULT_BUSINESS_PHONE = process.env.NEXT_PUBLIC_BUSINESS_PHONE || "+254700000000";
+export const DEFAULT_BUSINESS_PHONE = process.env.NEXT_PUBLIC_BUSINESS_PHONE || "+254713352735";
 
 export interface CartItem {
   listingId: string;
